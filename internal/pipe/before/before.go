@@ -33,13 +33,13 @@ func (Pipe) Run(ctx *context.Context) error {
 		if err != nil {
 			return err
 		}
-		log.Infof("running %s", color.CyanString(step))
+		log.Infof("running %s", color.CyanString(s))
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Env = ctx.Env.Strings()
 		out, err := cmd.CombinedOutput()
 		log.Debug(string(out))
 		if err != nil {
-			return fmt.Errorf("hook failed: %s\n%v", step, string(out))
+			return fmt.Errorf("hook failed: %s (%s)\n%v", step, err, string(out))
 		}
 	}
 	return nil

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/goreleaser/goreleaser/internal/artifact"
@@ -59,6 +60,10 @@ func TestExecute(t *testing.T) {
 				"ID": a.id,
 			},
 		})
+	}
+
+	if runtime.GOOS == "windows" {
+		t.Skip("skipped until https://github.com/mattn/go-shellwords/issues/38 is fixed")
 	}
 
 	testCases := []struct {

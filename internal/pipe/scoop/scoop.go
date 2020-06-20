@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"path/filepath"
 	"strings"
 
 	"github.com/apex/log"
@@ -157,7 +156,7 @@ type Resource struct {
 	Hash string   `json:"hash"` // the archive checksum
 }
 
-func doBuildManifest(manifest Manifest) (bytes.Buffer, error) {
+func doBuildManifest(manifest *Manifest) (bytes.Buffer, error) {
 	var result bytes.Buffer
 	data, err := json.MarshalIndent(manifest, "", "    ")
 	if err != nil {
@@ -167,7 +166,7 @@ func doBuildManifest(manifest Manifest) (bytes.Buffer, error) {
 	return result, err
 }
 
-func dataFor(ctx *context.Context, cl client.Client, artifacts []*artifact.Artifact) (Manifest, error) {
+func dataFor(ctx *context.Context, cl client.Client, artifacts []*artifact.Artifact) (*Manifest, error) {
 	var manifest = Manifest{
 		Version:      ctx.Version,
 		Architecture: map[string]Resource{},
@@ -181,9 +180,9 @@ func dataFor(ctx *context.Context, cl client.Client, artifacts []*artifact.Artif
 		url, err := cl.ReleaseURLTemplate(ctx)
 		if err != nil {
 			if client.IsNotImplementedErr(err) {
-				return manifest, ErrTokenTypeNotImplementedForScoop
+				return nil, ErrTokenTypeNotImplementedForScoop
 			}
-			return manifest, err
+			return nil, err
 		}
 		ctx.Config.Scoop.URLTemplate = url
 	}
@@ -198,12 +197,12 @@ func dataFor(ctx *context.Context, cl client.Client, artifacts []*artifact.Artif
 			WithArtifact(artifact, map[string]string{}).
 			Apply(ctx.Config.Scoop.URLTemplate)
 		if err != nil {
-			return manifest, err
+			return nil, err
 		}
 
 		sum, err := artifact.Checksum("sha256")
 		if err != nil {
-			return manifest, err
+			return nil, err
 		}
 
 		log.WithFields(log.Fields{
@@ -220,7 +219,7 @@ func dataFor(ctx *context.Context, cl client.Client, artifacts []*artifact.Artif
 		}
 	}
 
-	return manifest, nil
+	return &manifest, nil
 }
 
 func binaries(a *artifact.Artifact) []string {
@@ -228,7 +227,12 @@ func binaries(a *artifact.Artifact) []string {
 	var bins []string
 	var wrap = a.ExtraOr("WrappedIn", "").(string)
 	for _, b := range a.ExtraOr("Builds", []*artifact.Artifact{}).([]*artifact.Artifact) {
-		bins = append(bins, filepath.Join(wrap, b.Name))
+		// Path is expected to use Windows-style separators
+		bins = append(bins, windowsJoin(wrap, b.Name))
 	}
 	return bins
+}
+
+func windowsJoin(elems ...string) string {
+	return strings.Trim(strings.Join(elems, "\\"), "\\")
 }

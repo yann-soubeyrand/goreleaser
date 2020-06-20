@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -512,7 +513,7 @@ func TestRunPipeWrap(t *testing.T) {
 			break
 		}
 		require.NoError(t, err)
-		require.Equal(t, filepath.Join("foo_macOS", n), h.Name)
+		require.Equal(t, path.Join("foo_macOS", n), h.Name)
 	}
 }
 

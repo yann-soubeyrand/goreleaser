@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -20,19 +21,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var originKeyring = "testdata/gnupg"
+var originKeyring = filepath.Join("testdata", "gnupg")
 var keyring string
 
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
-	keyring = fmt.Sprintf("/tmp/gorel_gpg_test.%d", rand.Int())
+	tmpDir := os.TempDir()
+	keyring = filepath.Join(tmpDir, fmt.Sprintf("gorel_gpg_test.%d", rand.Int()))
 	fmt.Println("copying", originKeyring, "to", keyring)
-	if err := exec.Command("cp", "-Rf", originKeyring, keyring).Run(); err != nil {
-		fmt.Printf("failed to copy %s to %s: %s", originKeyring, keyring, err)
+	if err := copyKeyring(originKeyring, keyring); err != nil {
+		fmt.Printf("failed to copy %s to %s: %s\n",
+			originKeyring, keyring, err)
 		os.Exit(1)
 	}
 	defer os.RemoveAll(keyring)
 	os.Exit(m.Run())
+}
+
+func copyKeyring(origin, target string) (error) {
+	if runtime.GOOS == "windows" {
+		return exec.Command("xcopy", "/I", "/E", origin, target).Run()
+	}
+	err := exec.Command("cp", "-Rf", origin, target).Run()
+	if err != nil {
+		return err
+	}
+
+	err = exec.Command("chmod", "-R", "0700", target).Run()
+	return err
 }
 
 func TestDescription(t *testing.T) {
@@ -128,7 +144,7 @@ func TestSignArtifacts(t *testing.T) {
 					},
 				},
 			),
-			signaturePaths: []string{"artifact1.sig", "artifact2.sig", "artifact3.sig", "checksum.sig", "checksum2.sig", "linux_amd64/artifact4.sig", "artifact5.tar.gz.sig"},
+			signaturePaths: []string{"artifact1.sig", "artifact2.sig", "artifact3.sig", "checksum.sig", "checksum2.sig", filepath.Join("linux_amd64", "artifact4.sig"), "artifact5.tar.gz.sig"},
 			signatureNames: []string{"artifact1.sig", "artifact2.sig", "artifact3_1.0.0_linux_amd64.sig", "checksum.sig", "checksum2.sig", "artifact4_1.0.0_linux_amd64.sig", "artifact5.tar.gz.sig"},
 		},
 		{
@@ -142,7 +158,7 @@ func TestSignArtifacts(t *testing.T) {
 					},
 				},
 			),
-			signaturePaths: []string{"artifact1.sig", "artifact2.sig", "artifact3.sig", "checksum.sig", "checksum2.sig", "linux_amd64/artifact4.sig", "artifact5.tar.gz.sig"},
+			signaturePaths: []string{"artifact1.sig", "artifact2.sig", "artifact3.sig", "checksum.sig", "checksum2.sig", filepath.Join("linux_amd64", "artifact4.sig"), "artifact5.tar.gz.sig"},
 			signatureNames: []string{"artifact1.sig", "artifact2.sig", "artifact3_1.0.0_linux_amd64.sig", "checksum.sig", "checksum2.sig", "artifact4_1.0.0_linux_amd64.sig", "artifact5.tar.gz.sig"},
 		},
 		{
@@ -255,7 +271,7 @@ func TestSignArtifacts(t *testing.T) {
 					},
 				},
 			),
-			signaturePaths: []string{"artifact1.sig", "artifact2.sig", "artifact3.sig", "checksum.sig", "checksum2.sig", "linux_amd64/artifact4.sig", "artifact5.tar.gz.sig"},
+			signaturePaths: []string{"artifact1.sig", "artifact2.sig", "artifact3.sig", "checksum.sig", "checksum2.sig", filepath.Join("linux_amd64", "artifact4.sig"), "artifact5.tar.gz.sig"},
 			signatureNames: []string{"artifact1.sig", "artifact2.sig", "artifact3_1.0.0_linux_amd64.sig", "checksum.sig", "checksum2.sig", "artifact4_1.0.0_linux_amd64.sig", "artifact5.tar.gz.sig"},
 		},
 		{
@@ -280,7 +296,7 @@ func TestSignArtifacts(t *testing.T) {
 					},
 				},
 			),
-			signaturePaths: []string{"artifact1.sig", "artifact2.sig", "artifact3.sig", "checksum.sig", "checksum2.sig", "linux_amd64/artifact4.sig", "artifact5.tar.gz.sig"},
+			signaturePaths: []string{"artifact1.sig", "artifact2.sig", "artifact3.sig", "checksum.sig", "checksum2.sig", filepath.Join("linux_amd64", "artifact4.sig"), "artifact5.tar.gz.sig"},
 			signatureNames: []string{"artifact1.sig", "artifact2.sig", "artifact3_1.0.0_linux_amd64.sig", "checksum.sig", "checksum2.sig", "artifact4_1.0.0_linux_amd64.sig", "artifact5.tar.gz.sig"},
 		},
 	}
@@ -311,7 +327,7 @@ func testSign(t *testing.T, ctx *context.Context, signaturePaths []string, signa
 		assert.NoError(t, ioutil.WriteFile(file, []byte("foo"), 0644))
 	}
 	assert.NoError(t, ioutil.WriteFile(filepath.Join(tmpdir, "linux_amd64", "artifact4"), []byte("foo"), 0644))
-	artifacts = append(artifacts, "linux_amd64/artifact4")
+	artifacts = append(artifacts, filepath.Join("linux_amd64", "artifact4"))
 	assert.NoError(t, ioutil.WriteFile(filepath.Join(tmpdir, "artifact5.tar.gz"), []byte("foo"), 0644))
 	artifacts = append(artifacts, "artifact5.tar.gz")
 	ctx.Artifacts.Add(&artifact.Artifact{

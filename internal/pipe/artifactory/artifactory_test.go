@@ -346,7 +346,7 @@ func TestRunPipe_ArtifactoryDown(t *testing.T) {
 	assert.NoError(t, Pipe{}.Default(ctx))
 	err = Pipe{}.Publish(ctx)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "connection refused")
+	assert.Contains(t, err.Error(), "refused")
 }
 
 func TestRunPipe_TargetTemplateError(t *testing.T) {
@@ -584,16 +584,19 @@ func TestRunPipe_FileNotFound(t *testing.T) {
 	ctx.Env = map[string]string{
 		"ARTIFACTORY_PRODUCTION_SECRET": "deployuser-secret",
 	}
+	path := filepath.Join("archivetest", "dist", "mybin", "mybin")
 	ctx.Artifacts.Add(&artifact.Artifact{
 		Name:   "mybin",
-		Path:   "archivetest/dist/mybin/mybin",
+		Path:   path,
 		Goarch: "amd64",
 		Goos:   "darwin",
 		Type:   artifact.UploadableBinary,
 	})
 
 	assert.NoError(t, Pipe{}.Default(ctx))
-	assert.EqualError(t, Pipe{}.Publish(ctx), `open archivetest/dist/mybin/mybin: no such file or directory`)
+	err := Pipe{}.Publish(ctx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), fmt.Sprintf(`open %s: `, path))
 }
 
 func TestRunPipe_UnparsableTarget(t *testing.T) {

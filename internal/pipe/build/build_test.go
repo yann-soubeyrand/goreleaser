@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/goreleaser/goreleaser/internal/artifact"
@@ -42,6 +43,20 @@ func (f *fakeBuilder) Build(ctx *context.Context, build config.Build, options ap
 		Name: options.Name,
 	})
 	return nil
+}
+
+func createFileCmd(path string) string {
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf("fsutil file createnew %s 0", path)
+	}
+	return fmt.Sprintf("touch %s", path)
+}
+
+func osShell() string {
+	if runtime.GOOS == "windows" {
+		return "powershell"
+	}
+	return "bash"
 }
 
 func init() {
@@ -122,10 +137,10 @@ func TestRunFullPipe(t *testing.T) {
 				Ldflags: []string{"-X main.test=testing"},
 				Hooks: config.HookConfig{
 					Pre: []config.BuildHook{
-						{Cmd: "touch " + pre},
+						{Cmd: createFileCmd(pre)},
 					},
 					Post: []config.BuildHook{
-						{Cmd: "touch " + post},
+						{Cmd: createFileCmd(post)},
 					},
 				},
 				Targets: []string{"whatever"},
@@ -159,10 +174,10 @@ func TestRunFullPipeFail(t *testing.T) {
 				Ldflags: []string{"-X main.test=testing"},
 				Hooks: config.HookConfig{
 					Pre: []config.BuildHook{
-						{Cmd: "touch " + pre},
+						{Cmd: createFileCmd(pre)},
 					},
 					Post: []config.BuildHook{
-						{Cmd: "touch " + post},
+						{Cmd: createFileCmd(post)},
 					},
 				},
 				Targets: []string{"whatever"},
@@ -195,14 +210,18 @@ func TestRunPipeFailingHooks(t *testing.T) {
 		ctx.Git.CurrentTag = "2.3.4"
 		ctx.Config.Builds[0].Hooks.Pre = []config.BuildHook{{Cmd: "exit 1"}}
 		ctx.Config.Builds[0].Hooks.Post = []config.BuildHook{{Cmd: "echo post"}}
-		assert.EqualError(t, Pipe{}.Run(ctx), `pre hook failed: "": exec: "exit": executable file not found in $PATH`)
+		err := Pipe{}.Run(ctx)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `pre hook failed: "": exec: "exit": executable file not found in `)
 	})
 	t.Run("post-hook", func(t *testing.T) {
 		var ctx = context.New(cfg)
 		ctx.Git.CurrentTag = "2.3.4"
 		ctx.Config.Builds[0].Hooks.Pre = []config.BuildHook{{Cmd: "echo pre"}}
 		ctx.Config.Builds[0].Hooks.Post = []config.BuildHook{{Cmd: "exit 1"}}
-		assert.EqualError(t, Pipe{}.Run(ctx), `post hook failed: "": exec: "exit": executable file not found in $PATH`)
+		err := Pipe{}.Run(ctx)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `post hook failed: "": exec: "exit": executable file not found in `)
 	})
 }
 
@@ -437,7 +456,7 @@ func TestRunHookEnvs(t *testing.T) {
 			Env: []string{
 				fmt.Sprintf("CTXFOO=%s/foo", tmp),
 			},
-		}), opts, []string{}, simpleHook("touch {{ .Env.CTXFOO }}"))
+		}), opts, []string{}, simpleHook(createFileCmd("{{ .Env.CTXFOO }}")))
 		assert.NoError(t, err)
 		assert.FileExists(t, filepath.Join(tmp, "foo"))
 	})
@@ -447,7 +466,7 @@ func TestRunHookEnvs(t *testing.T) {
 			Builds: []config.Build{
 				build,
 			},
-		}), opts, build.Env, simpleHook("touch {{ .Env.FOO }}"))
+		}), opts, build.Env, simpleHook(createFileCmd("{{ .Env.FOO }}")))
 		assert.NoError(t, err)
 		assert.FileExists(t, filepath.Join(tmp, "foo"))
 	})
@@ -458,7 +477,7 @@ func TestRunHookEnvs(t *testing.T) {
 				build,
 			},
 		}), opts, []string{}, []config.BuildHook{{
-			Cmd: "touch {{ .Env.HOOK_ONLY_FOO }}",
+			Cmd: createFileCmd("{{ .Env.HOOK_ONLY_FOO }}"),
 			Env: []string{
 				fmt.Sprintf("HOOK_ONLY_FOO=%s/hook_only", tmp),
 			},
@@ -477,7 +496,7 @@ func TestRunHookEnvs(t *testing.T) {
 			},
 		}), opts, []string{
 			fmt.Sprintf("OVER_FOO=%s/build_over_ctx", tmp),
-		}, simpleHook("touch {{ .Env.OVER_FOO }}"))
+		}, simpleHook(createFileCmd("{{ .Env.OVER_FOO }}")))
 		assert.NoError(t, err)
 
 		assert.FileExists(t, filepath.Join(tmp, "build_over_ctx"))
@@ -493,7 +512,7 @@ func TestRunHookEnvs(t *testing.T) {
 				fmt.Sprintf("CTX_OR_HOOK_FOO=%s/ctx_over_hook", tmp),
 			},
 		}), opts, []string{}, []config.BuildHook{{
-			Cmd: "touch {{ .Env.CTX_OR_HOOK_FOO }}",
+			Cmd: createFileCmd("{{ .Env.CTX_OR_HOOK_FOO }}"),
 			Env: []string{
 				fmt.Sprintf("CTX_OR_HOOK_FOO=%s/hook_over_ctx", tmp),
 			},
@@ -511,7 +530,7 @@ func TestRunHookEnvs(t *testing.T) {
 		}), opts, []string{
 			fmt.Sprintf("BUILD_OR_HOOK_FOO=%s/build_over_hook", tmp),
 		}, []config.BuildHook{{
-			Cmd: "touch {{ .Env.BUILD_OR_HOOK_FOO }}",
+			Cmd: createFileCmd("{{ .Env.BUILD_OR_HOOK_FOO }}"),
 			Env: []string{
 				fmt.Sprintf("BUILD_OR_HOOK_FOO=%s/hook_over_build", tmp),
 			},
@@ -532,7 +551,7 @@ func TestRunHookEnvs(t *testing.T) {
 		}), opts, []string{
 			fmt.Sprintf("CTX_OR_BUILD_OR_HOOK_FOO=%s/build_wins", tmp),
 		}, []config.BuildHook{{
-			Cmd: "touch {{ .Env.CTX_OR_BUILD_OR_HOOK_FOO }}",
+			Cmd: createFileCmd("{{ .Env.CTX_OR_BUILD_OR_HOOK_FOO }}"),
 			Env: []string{
 				fmt.Sprintf("CTX_OR_BUILD_OR_HOOK_FOO=%s/hook_wins", tmp),
 			},
@@ -548,8 +567,9 @@ func TestRunHookEnvs(t *testing.T) {
 			Builds: []config.Build{
 				build,
 			},
-		}), opts, build.Env, simpleHook("touch {{ .Env.FOOss }}"))
-		assert.EqualError(t, err, `template: tmpl:1:13: executing "tmpl" at <.Env.FOOss>: map has no entry for key "FOOss"`)
+		}), opts, build.Env, simpleHook(createFileCmd("{{ .Env.FOOss }}")))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), ` executing "tmpl" at <.Env.FOOss>: map has no entry for key "FOOss"`)
 	})
 
 	t.Run("invalid dir template", func(t *testing.T) {
@@ -607,10 +627,10 @@ func TestPipeOnBuild_hooksRunPerTarget(t *testing.T) {
 		},
 		Hooks: config.HookConfig{
 			Pre: []config.BuildHook{
-				{Cmd: "touch pre-hook-{{.Target}}", Dir: tmpDir},
+				{Cmd: createFileCmd("pre-hook-{{.Target}}"), Dir: tmpDir},
 			},
 			Post: config.BuildHooks{
-				{Cmd: "touch post-hook-{{.Target}}", Dir: tmpDir},
+				{Cmd: createFileCmd("post-hook-{{.Target}}"), Dir: tmpDir},
 			},
 		},
 	}
@@ -678,10 +698,10 @@ func TestHookComplex(t *testing.T) {
 
 	require.NoError(t, runHook(context.New(config.Project{}), api.Options{}, []string{}, config.BuildHooks{
 		{
-			Cmd: `bash -c "touch foo"`,
+			Cmd: fmt.Sprintf(`%s -c "%s"`, osShell(), createFileCmd("foo")),
 		},
 		{
-			Cmd: `bash -c "touch \"bar\""`,
+			Cmd: fmt.Sprintf(`%s -c "%s"`, osShell(), createFileCmd("\"bar\"")),
 		},
 	}))
 
@@ -692,7 +712,7 @@ func TestHookComplex(t *testing.T) {
 func TestHookInvalidShelCommand(t *testing.T) {
 	require.Error(t, runHook(context.New(config.Project{}), api.Options{}, []string{}, config.BuildHooks{
 		{
-			Cmd: `bash -c "echo \"unterminated command\"`,
+			Cmd: osShell()+` -c "echo \"unterminated command\"`,
 		},
 	}))
 }

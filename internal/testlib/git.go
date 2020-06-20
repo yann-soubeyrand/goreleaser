@@ -1,6 +1,7 @@
 package testlib
 
 import (
+	"runtime"
 	"testing"
 	"time"
 
@@ -62,6 +63,10 @@ func fakeGitEnv(env map[string]string, args ...string) (string, error) {
 		"-c", "commit.gpgSign=false",
 		"-c", "log.showSignature=false",
 	}
+	if runtime.GOOS == "windows" {
+		allArgs = append(allArgs, "-c", "core.autocrlf=false")
+	}
+
 	allArgs = append(allArgs, args...)
 	return git.RunEnv(env, allArgs...)
 }

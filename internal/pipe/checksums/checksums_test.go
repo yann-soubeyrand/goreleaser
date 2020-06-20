@@ -76,7 +76,7 @@ func TestPipeFileNotExist(t *testing.T) {
 	})
 	err = Pipe{}.Run(ctx)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "/nope: no such file or directory")
+	assert.Contains(t, err.Error(), "open /nope: ")
 }
 
 func TestPipeInvalidNameTemplate(t *testing.T) {
@@ -142,7 +142,7 @@ func TestPipeCouldNotOpenChecksumsTxt(t *testing.T) {
 	})
 	err = Pipe{}.Run(ctx)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "/checksums.txt: permission denied")
+	assert.Contains(t, err.Error(), " denied")
 }
 
 func TestPipeWhenNoArtifacts(t *testing.T) {

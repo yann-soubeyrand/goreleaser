@@ -15,7 +15,9 @@ func TestCheckConfig(t *testing.T) {
 func TestCheckConfigThatDoesNotExist(t *testing.T) {
 	var cmd = newCheckCmd()
 	cmd.cmd.SetArgs([]string{"-f", "testdata/nope.yml"})
-	require.EqualError(t, cmd.cmd.Execute(), "open testdata/nope.yml: no such file or directory")
+	err := cmd.cmd.Execute()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "open testdata/nope.yml: ")
 }
 
 func TestCheckConfigUnmarshalError(t *testing.T) {

@@ -233,9 +233,10 @@ func TestCreateFileDoesntExist(t *testing.T) {
 	ctx.Git = context.GitInfo{
 		CurrentTag: "v1.2.3",
 	}
+	path := filepath.Join(dist, "mybin", "mybin")
 	ctx.Artifacts.Add(&artifact.Artifact{
 		Name:   "mybin",
-		Path:   filepath.Join(dist, "mybin", "mybin"),
+		Path:   path,
 		Goos:   "linux",
 		Goarch: "amd64",
 		Type:   artifact.Binary,
@@ -243,7 +244,7 @@ func TestCreateFileDoesntExist(t *testing.T) {
 			"ID": "default",
 		},
 	})
-	require.Contains(t, Pipe{}.Run(ctx).Error(), `dist/mybin/mybin: file does not exist`)
+	require.Contains(t, Pipe{}.Run(ctx).Error(), path+`: file does not exist`)
 }
 
 func TestInvalidConfig(t *testing.T) {

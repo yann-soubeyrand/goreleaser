@@ -3,6 +3,7 @@ package before
 import (
 	"io/ioutil"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/goreleaser/goreleaser/pkg/config"
@@ -14,13 +15,20 @@ func TestDescription(t *testing.T) {
 	require.NotEmpty(t, Pipe{}.String())
 }
 
+func osShell() string {
+	if runtime.GOOS == "windows" {
+		return "powershell"
+	}
+	return "bash"
+}
+
 func TestRunPipe(t *testing.T) {
 	for _, tc := range [][]string{
 		nil,
 		{},
 		{"go version"},
 		{"go version", "go list"},
-		{`bash -c "go version; echo \"lala spaces and such\""`},
+		{osShell()+` -c "go version; echo \"lala spaces and such\""`},
 	} {
 		ctx := context.New(
 			config.Project{
@@ -35,7 +43,7 @@ func TestRunPipe(t *testing.T) {
 
 func TestRunPipeInvalidCommand(t *testing.T) {
 	for _, tc := range [][]string{
-		{`bash -c "echo \"unterminated command\"`},
+		{osShell()+` -c "echo \"unterminated command\"`},
 	} {
 		ctx := context.New(
 			config.Project{
@@ -66,8 +74,14 @@ func TestRunPipeFail(t *testing.T) {
 func TestRunWithEnv(t *testing.T) {
 	f, err := ioutil.TempFile("", "")
 	require.NoError(t, err)
+	require.NoError(t, f.Close())
 	require.NoError(t, os.Remove(f.Name()))
 	defer os.Remove(f.Name())
+
+	if runtime.GOOS == "windows" {
+		t.Skip("skipped until https://github.com/mattn/go-shellwords/issues/38 is fixed")
+	}
+
 	require.NoError(t, Pipe{}.Run(context.New(
 		config.Project{
 			Env: []string{

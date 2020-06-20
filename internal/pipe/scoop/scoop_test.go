@@ -2,6 +2,7 @@ package scoop
 
 import (
 	ctx "context"
+	"encoding/json"
 	"flag"
 	"io/ioutil"
 	"os"
@@ -924,15 +925,13 @@ func Test_buildManifest(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			out, err := doBuildManifest(mf)
-			require.NoError(t, err)
-
 			if *update {
+				out, err := doBuildManifest(mf)
+				require.NoError(t, err)
 				require.NoError(t, ioutil.WriteFile(tt.filename, out.Bytes(), 0655))
 			}
-			bts, err := ioutil.ReadFile(tt.filename)
-			require.NoError(t, err)
-			require.Equal(t, string(bts), out.String())
+			expectedManifest := parseManifestFromFile(t, tt.filename)
+			require.Equal(t, expectedManifest, mf)
 		})
 	}
 }
@@ -1005,16 +1004,26 @@ func TestWrapInDirectory(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	out, err := doBuildManifest(mf)
-	require.NoError(t, err)
-
 	var golden = "testdata/test_buildmanifest_wrap.json.golden"
 	if *update {
+		out, err := doBuildManifest(mf)
+		require.NoError(t, err)
 		require.NoError(t, ioutil.WriteFile(golden, out.Bytes(), 0655))
 	}
-	bts, err := ioutil.ReadFile(golden)
+	expectedManifest := parseManifestFromFile(t, golden)
 	require.NoError(t, err)
-	require.Equal(t, string(bts), out.String())
+	require.Equal(t, expectedManifest, mf)
+}
+
+func parseManifestFromFile(t *testing.T, filePath string) *Manifest {
+	b, err := ioutil.ReadFile(filePath)
+	require.NoError(t, err)
+
+	m := Manifest{}
+	err = json.Unmarshal(b, &m)
+	require.NoError(t, err)
+
+	return &m
 }
 
 type DummyClient struct {

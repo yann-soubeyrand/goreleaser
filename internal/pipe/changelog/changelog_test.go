@@ -3,7 +3,9 @@ package changelog
 import (
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,7 +48,9 @@ func TestChangelogProvidedViaFlagAndSkipEnabled(t *testing.T) {
 func TestChangelogProvidedViaFlagDoesntExist(t *testing.T) {
 	var ctx = context.New(config.Project{})
 	ctx.ReleaseNotes = "testdata/changes.nope"
-	require.EqualError(t, Pipe{}.Run(ctx), "open testdata/changes.nope: no such file or directory")
+	err := Pipe{}.Run(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "open testdata/changes.nope: ")
 }
 
 func TestChangelogSkip(t *testing.T) {
@@ -58,13 +62,17 @@ func TestChangelogSkip(t *testing.T) {
 func TestReleaseHeaderProvidedViaFlagDoesntExist(t *testing.T) {
 	var ctx = context.New(config.Project{})
 	ctx.ReleaseHeader = "testdata/header.nope"
-	require.EqualError(t, Pipe{}.Run(ctx), "open testdata/header.nope: no such file or directory")
+	err := Pipe{}.Run(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "open testdata/header.nope: ")
 }
 
 func TestReleaseFooterProvidedViaFlagDoesntExist(t *testing.T) {
 	var ctx = context.New(config.Project{})
 	ctx.ReleaseFooter = "testdata/footer.nope"
-	require.EqualError(t, Pipe{}.Run(ctx), "open testdata/footer.nope: no such file or directory")
+	err := Pipe{}.Run(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "open testdata/footer.nope: ")
 }
 
 func TestSnapshot(t *testing.T) {
@@ -331,12 +339,20 @@ func TestChangelogOnBranchWithSameNameAsTag(t *testing.T) {
 	}
 }
 
+func CopyDirectory(source, target string) error {
+	if runtime.GOOS == "windows" {
+		return exec.Command("xcopy", "/I", "/E", source, target).Run()
+	}
+	return exec.Command("cp", "-Rf", source, target).Run()
+}
+
 func TestChangeLogWithReleaseHeader(t *testing.T) {
 	current, err := os.Getwd()
 	require.NoError(t, err)
 	tmpdir, back := testlib.Mktmp(t)
 	defer back()
-	require.NoError(t, os.Symlink(current+"/testdata", tmpdir+"/testdata"))
+
+	require.NoError(t, CopyDirectory(filepath.Join(current, "testdata"), filepath.Join(tmpdir, "testdata")))
 	testlib.GitInit(t)
 	var msgs = []string{
 		"initial commit",
@@ -362,7 +378,7 @@ func TestChangeLogWithTemplatedReleaseHeader(t *testing.T) {
 	require.NoError(t, err)
 	tmpdir, back := testlib.Mktmp(t)
 	defer back()
-	require.NoError(t, os.Symlink(current+"/testdata", tmpdir+"/testdata"))
+	require.NoError(t, CopyDirectory(filepath.Join(current, "testdata"), filepath.Join(tmpdir, "testdata")))
 	testlib.GitInit(t)
 	var msgs = []string{
 		"initial commit",
@@ -387,7 +403,7 @@ func TestChangeLogWithReleaseFooter(t *testing.T) {
 	require.NoError(t, err)
 	tmpdir, back := testlib.Mktmp(t)
 	defer back()
-	require.NoError(t, os.Symlink(current+"/testdata", tmpdir+"/testdata"))
+	require.NoError(t, CopyDirectory(filepath.Join(current, "testdata"), filepath.Join(tmpdir, "testdata")))
 	testlib.GitInit(t)
 	var msgs = []string{
 		"initial commit",
@@ -413,7 +429,7 @@ func TestChangeLogWithTemplatedReleaseFooter(t *testing.T) {
 	require.NoError(t, err)
 	tmpdir, back := testlib.Mktmp(t)
 	defer back()
-	require.NoError(t, os.Symlink(current+"/testdata", tmpdir+"/testdata"))
+	require.NoError(t, CopyDirectory(filepath.Join(current, "testdata"), filepath.Join(tmpdir, "testdata")))
 	testlib.GitInit(t)
 	var msgs = []string{
 		"initial commit",

@@ -32,8 +32,9 @@ func TestPopulatedDistExists(t *testing.T) {
 	assert.NoError(t, err)
 	var dist = filepath.Join(folder, "dist")
 	assert.NoError(t, os.Mkdir(dist, 0755))
-	_, err = os.Create(filepath.Join(dist, "mybin"))
+	f, err := os.Create(filepath.Join(dist, "mybin"))
 	assert.NoError(t, err)
+	assert.NoError(t, f.Close())
 	var ctx = &context.Context{
 		Config: config.Project{
 			Dist: dist,

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,9 +50,9 @@ func TestZipFile(t *testing.T) {
 	for i, zf := range r.File {
 		paths[i] = zf.Name
 		t.Logf("%s: %v", zf.Name, zf.Mode())
-		if zf.Name == "sub1/executable" {
+		if zf.Name == "sub1/executable" && runtime.GOOS != "windows" {
 			var ex = zf.Mode() | 0111
-			assert.Equal(zf.Mode().String(), ex.String())
+			assert.Equal(ex.String(), zf.Mode().String())
 		}
 	}
 	assert.Equal([]string{

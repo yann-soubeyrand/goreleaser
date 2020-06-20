@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,9 +57,9 @@ func TestTarGzFile(t *testing.T) {
 		assert.NoError(err)
 		paths = append(paths, next.Name)
 		t.Logf("%s: %v", next.Name, next.FileInfo().Mode())
-		if next.Name == "sub1/executable" {
+		if next.Name == "sub1/executable" && runtime.GOOS != "windows" {
 			var ex = next.FileInfo().Mode() | 0111
-			assert.Equal(next.FileInfo().Mode().String(), ex.String())
+			assert.Equal(ex.String(), next.FileInfo().Mode().String())
 		}
 	}
 	assert.Equal([]string{

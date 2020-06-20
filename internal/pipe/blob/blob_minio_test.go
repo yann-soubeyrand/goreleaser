@@ -266,7 +266,7 @@ func start(t *testing.T, name, listen string) {
 
 	if out, err := exec.Command(
 		"docker", "run", "-d", "--rm",
-		"-v", filepath.Join(wd, "testdata/data")+":/data",
+		"-v", filepath.Join(wd, "testdata", "data")+":/data",
 		"--name", name,
 		"-p", listen+":9000",
 		"-e", "MINIO_ACCESS_KEY=minio",
@@ -285,6 +285,7 @@ func start(t *testing.T, name, listen string) {
 		}
 		if strings.Contains(string(out), `"Status":"healthy"`) {
 			t.Log("minio is healthy")
+			
 			break
 		}
 		t.Log("waiting for minio to be healthy")
