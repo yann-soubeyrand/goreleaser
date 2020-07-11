@@ -10,7 +10,7 @@ You can create one [here](https://github.com/settings/tokens/new) for GitHub
 or [here](https://gitlab.com/profile/personal_access_tokens) for GitLab
 or in `Settings | Applications | Generate New Token` page of your Gitea instance.
 
-This token should be added to the environment variables as `GITHUB_TOKEN` or `GITLAB_TOKEN` or `GITEA_TOKEN` respecively.
+This token should be added to the environment variables as `GITHUB_TOKEN` or `GITLAB_TOKEN` or `GITEA_TOKEN` respectively.
 Here is how to do it with Travis CI:
 [Defining Variables in Repository Settings](https://docs.travis-ci.com/user/environment-variables/#Defining-Variables-in-Repository-Settings).
 
